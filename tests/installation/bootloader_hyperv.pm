@@ -145,12 +145,16 @@ sub run {
 
     my ($winserver, $winver, $vmguid);
 
-    $winver = $svirt->get_cmd_output("cmd /C ver");
-    if (grep { /Microsoft Windows \[Version 6.3.*\]/ } $winver) {
-        $winserver = 2012;
+    $winver = $svirt->get_cmd_output("$ps (Get-WmiObject Win32_OperatingSystem).Version");
+    $winver =~ s/^\s+|\s+$//g;
+    if ($winver eq '6.3.9600') {
+        $winserver = '2012R2';
     }
-    elsif (grep { /Microsoft Windows \[Version 10.0.*\]/ } $winver) {
-        $winserver = 2016;
+    elsif ($winver eq '10.0.14393') {
+        $winserver = '2016';
+    }
+    elsif ($winver eq '10.0.17763') {
+        $winserver = '2019';
     }
     else {
         die "Unsupported version: $winver";
@@ -164,7 +168,7 @@ sub run {
     my $vm_generation      = get_var('UEFI') ? 2 : 1;
     my $hyperv_switch_name = get_var('HYPERV_VIRTUAL_SWITCH', 'ExternalVirtualSwitch');
     my @disk_paths         = ();
-    if ($winserver eq '2012' || $winserver eq '2016') {
+    if ($winserver eq '2012R2' || $winserver eq '2016' || $winserver eq '2019') {
         for my $n (1 .. get_var('NUMDISKS')) {
             hyperv_cmd("del /F $root\\cache\\${name}_${n}.vhd");
             hyperv_cmd("del /F $root\\cache\\${name}_${n}.vhdx");
@@ -186,7 +190,7 @@ sub run {
         # the default is 'Production' (i.e. snapshot on guest level).
         hyperv_cmd("$ps Set-VM -VMName $name -CheckpointType Standard") if $winserver eq '2016';
         if ($iso) {
-            hyperv_cmd("$ps Remove-VMDvdDrive -VMName $name -ControllerNumber 1 -ControllerLocation 0") unless $winserver eq '2012' and get_var('UEFI');
+            hyperv_cmd("$ps Remove-VMDvdDrive -VMName $name -ControllerNumber 1 -ControllerLocation 0") unless $winserver eq '2012R2' and get_var('UEFI');
             hyperv_cmd("$ps Add-VMDvdDrive -VMName $name -Path $iso");
         }
         foreach my $disk_path (@disk_paths) {
@@ -212,7 +216,7 @@ sub run {
     hyperv_cmd("$ps Set-VMProcessor $name -Count $cpucount");
 
     if (get_var('UEFI')) {
-        if ($winserver eq '2012' || get_var('DISABLE_SECUREBOOT')) {
+        if ($winserver eq '2012R2' || get_var('DISABLE_SECUREBOOT')) {
             hyperv_cmd("$ps Set-VMFirmware $name -EnableSecureBoot Off");
         } else {
             hyperv_cmd("$ps Set-VMFirmware $name -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'");
