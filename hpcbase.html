@@ -26,6 +26,7 @@
       <li><a href="#get_master_ip">get_master_ip</a></li>
       <li><a href="#get_slave_ip">get_slave_ip</a></li>
       <li><a href="#prepare_user_and_group">prepare_user_and_group</a></li>
+      <li><a href="#prepare_spack_env">prepare_spack_env</a></li>
     </ul>
   </li>
 </ul><h1>lib/hpcbase.pm</h1>
@@ -48,15 +49,17 @@
 
 <h2 id="distribute_munge_key">distribute_munge_key</h2>
 
-<p>Distributes munge kyes across all cluster nodes</p>
+<p>Distributes munge keys across all compute nodes of the cluster. This should usually be called from the master node. If a replica master node is expected, key should be also be copied in it too.</p>
 
 <h2 id="distribute_slurm_conf">distribute_slurm_conf</h2>
 
-<p>Distributes slurm config across all cluster nodes</p>
+<p>Distributes slurm config across all compute nodes of the cluster This should usually be called from the master node. If a replica master node is expected, config file should be also be copied in it too.</p>
 
 <h2 id="generate_and_distribute_ssh">generate_and_distribute_ssh</h2>
 
-<p>Generates and distributes ssh keys across all cluster nodes</p>
+<pre><code>generate_and_distribute_ssh($user)</code></pre>
+
+<p>Generates and distributes ssh keys across compute nodes. <code>user</code> by default is set to <b>root</b> user unless another value is passed to the parameters. <code>user</code> is used to determine the user on the remote machine where the ssh_id will be copied. This should usually be called from the master node. If a replica master node is expected, the ssh keys should be also be distributed in it too.</p>
 
 <h2 id="check_nodes_availability">check_nodes_availability</h2>
 
@@ -77,6 +80,18 @@
 <h2 id="prepare_user_and_group">prepare_user_and_group</h2>
 
 <p>Creating slurm user and group with some pre-defined ID</p>
+
+<h2 id="prepare_spack_env">prepare_spack_env</h2>
+
+<pre><code>prepare_spack_env($mpi)</code></pre>
+
+<p>After install spack and HPC <code>mpi</code> required packages, prepares env variables. The HPC packages (*-gnu-hpc) use an installation path that is separate from the rest and can be exported via a network file system.</p>
+
+<p>After <code>prepare_spack_env</code> run, <code>spack</code> should be ready to build entire tool stack, downloading and installing all bits required for whatever package or compiler.</p>
+
+<p>This sub is designed to install one of the mpi implementations. Although there are thousands packages to be used.</p>
+
+<p>LD_LIBRARY_PATH is removed and spack is not exported. In case LD_LIBRARY_PATH is required it has to be add it in the <i>.spack/modules.yaml</i>.</p>
 
 
 </body>
