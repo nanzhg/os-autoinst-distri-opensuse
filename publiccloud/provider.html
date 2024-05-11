@@ -14,9 +14,10 @@
 <ul id="index"><li><a href="../index.html"><i>&lt;= Back to file list</i></a></li>
   <li><a href="#METHODS">METHODS</a>
     <ul>
+      <li><a href="#generate_basename">generate_basename</a></li>
       <li><a href="#conv_openqa_tf_name">conv_openqa_tf_name</a></li>
       <li><a href="#find_img">find_img</a></li>
-      <li><a href="#upload_image">upload_image</a></li>
+      <li><a href="#upload_img">upload_img</a></li>
       <li><a href="#img_proof">img_proof</a></li>
       <li><a href="#parse_img_proof_output">parse_img_proof_output</a></li>
       <li><a href="#create_ssh_key">create_ssh_key</a></li>
@@ -41,6 +42,14 @@
 
 <h1 id="METHODS">METHODS</h1>
 
+<h2 id="generate_basename">generate_basename</h2>
+
+<pre><code>Call: $self-&gt;generate_basename();
+
+openqa test product name composition, based on basic product parameters values and eventual modifiers.
+
+Returns a string-name containing distri, version, flavor, arch.</code></pre>
+
 <h2 id="conv_openqa_tf_name">conv_openqa_tf_name</h2>
 
 <p>Does the conversion between <code>PUBLIC_CLOUD_PROVIDER</code> and Terraform providers name.</p>
@@ -49,7 +58,7 @@
 
 <p>Retrieves the image-id by given image <code>name</code>.</p>
 
-<h2 id="upload_image">upload_image</h2>
+<h2 id="upload_img">upload_img</h2>
 
 <p>Upload a image to the CSP. Required parameter is the location of the <code>image</code> file. UEFI images are supported by giving the optional parameter <code>type</code> = &#39;uefi&#39;. This is only supported on GCE at the momment.</p>
 
