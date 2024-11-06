@@ -8,7 +8,6 @@
 # Maintainer: Nan Zhang <nan.zhang@suse.com> qe-virt@suse.de
 
 use base multi_machine_job_base;
-use base prepare_transactional_server;
 use strict;
 use warnings;
 use testapi;
@@ -237,8 +236,21 @@ sub install_kubevirt_packages {
     zypper_call('in jq open-iscsi') if (script_run('rpmquery jq open-iscsi') && ($kubevirt_ver ge "0.50.0"));
 
     # Install required packages perl-CPAN-Changes and ant-junit
+    my $repo_name = '';
+    my $inst_cmd = 'in -f';
     if (is_transactional) {
-        $self->install_additional_pkgs();
+        if (get_var("INSTALL_OTHER_REPOS")) {
+            foreach (split(/,/, get_var("INSTALL_OTHER_REPOS"))) {
+                $repo_name = (split(/\//, $_))[-1] . "-" . bmwqemu::random_string(8);
+                zypper_call("--gpg-auto-import-keys ar --enable --refresh $_ $repo_name");
+                save_screenshot;
+            }
+            zypper_call("--gpg-auto-import-keys refresh");
+            save_screenshot;
+            $inst_cmd = $inst_cmd . " $_" foreach (split(/,/, get_required_var("INSTALL_OTHER_PACKAGES")));
+            zypper_call($inst_cmd);
+            save_screenshot;
+        }
     } else {
         zypper_call('in git ant-junit') if (script_run('rpmquery git ant-junit'));
     }
