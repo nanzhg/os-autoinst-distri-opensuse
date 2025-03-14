@@ -93,6 +93,7 @@ sub rke2_agent_setup {
     assert_script_run("cat > /etc/rancher/rke2/config.yaml <<__END
 server: https://$server_hostname:9345
 token: $server_node_token
+disable-default-registry-endpoint: true
 kubelet-arg:
   - cpu-manager-policy=static
   - kube-reserved=cpu=500m

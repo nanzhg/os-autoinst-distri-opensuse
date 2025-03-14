@@ -154,22 +154,25 @@ sub rke2_server_setup {
     # Create registries ready
     our $local_registry_fqdn = get_required_var("LOCAL_REGISTRY_FQDN");
     our $local_registry_ip = script_output("nslookup $local_registry_fqdn|sed -n '5,1p'|awk -F' ' '{print \$2}'");
-    assert_script_run("cat > /etc/rancher/rke2/registries.yaml <<__END
+    assert_script_run(qq(cat > /etc/rancher/rke2/registries.yaml <<__END
 mirrors:
   $local_registry_fqdn:5000:
     endpoint:
-      - http://$local_registry_fqdn:5000
+      - "http://$local_registry_fqdn:5000"
   $local_registry_ip:5000:
     endpoint:
-      - http://$local_registry_ip:5000
+      - "http://$local_registry_ip:5000"
 __END
-(exit \$?)");
+(exit \$?)));
 
     # Wait for rke2-agent service to be ready
     my $children = get_children();
     mutex_wait('rke2_agent_start_ready', (keys %$children)[0]);
 
     assert_script_run("scp /etc/rancher/rke2/registries.yaml root\@$agent_ip:/etc/rancher/rke2/registries.yaml");
+    # assert_script_run(qq(echo "system-default-registry: \"$local_registry_ip\"" > /etc/rancher/rke2/config.yaml));
+    # assert_script_run(qq(ssh root\@$agent_ip echo "system-default-registry: \"$local_registry_ip\"" >> /etc/rancher/rke2/config.yaml));
+    assert_script_run(qq(echo "disable-default-registry-endpoint: true" > /etc/rancher/rke2/config.yaml));
 
     # Workaround for bsc#1217658
     my $config_toml_tmpl = 'config.toml.tmpl';
