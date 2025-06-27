@@ -15,6 +15,18 @@
     ]
   },
   "storage": {
+    "disks": [
+      {
+        "device": "/dev/nvme0n1",
+        "partitions": [
+          {
+            "label": "ROOT",
+            "number": 1
+          }
+        ],
+        "wipeTable": true
+      }
+    ],
     "filesystems": [
       {
         "device": "/dev/disk/by-label/ROOT",
