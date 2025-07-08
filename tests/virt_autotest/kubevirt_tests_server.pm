@@ -154,16 +154,16 @@ sub rke2_server_setup {
     # Create registries ready
     our $local_registry_fqdn = get_required_var("LOCAL_REGISTRY_FQDN");
     our $local_registry_ip = script_output("nslookup $local_registry_fqdn|sed -n '5,1p'|awk -F' ' '{print \$2}'");
-    assert_script_run("cat > /etc/rancher/rke2/registries.yaml <<__END
+    assert_script_run(qq(cat > /etc/rancher/rke2/registries.yaml <<__END
 mirrors:
-  $local_registry_fqdn:5000:
+  "*":
     endpoint:
-      - http://$local_registry_fqdn:5000
-  $local_registry_ip:5000:
+      - "https://$local_registry_fqdn:5000"
+  "*":
     endpoint:
-      - http://$local_registry_ip:5000
+      - "https://$local_registry_ip:5000"
 __END
-(exit \$?)");
+(exit \$?)));
 
     # Wait for rke2-agent service to be ready
     my $children = get_children();
