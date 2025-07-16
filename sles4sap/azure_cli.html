@@ -33,6 +33,7 @@
       <li><a href="#az_network_lb_probe_create">az_network_lb_probe_create</a></li>
       <li><a href="#az_network_lb_rule_create">az_network_lb_rule_create</a></li>
       <li><a href="#az_vm_as_create">az_vm_as_create</a></li>
+      <li><a href="#az_img_from_vhd_create">az_img_from_vhd_create</a></li>
       <li><a href="#az_vm_create">az_vm_create</a></li>
       <li><a href="#az_vm_list">az_vm_list</a></li>
       <li><a href="#az_vm_instance_view_get">az_vm_instance_view_get</a></li>
@@ -63,6 +64,7 @@
       <li><a href="#az_keyvault_list">az_keyvault_list</a></li>
       <li><a href="#az_keyvault_secret_list">az_keyvault_secret_list</a></li>
       <li><a href="#az_keyvault_secret_show">az_keyvault_secret_show</a></li>
+      <li><a href="#az_group_exists">az_group_exists</a></li>
     </ul>
   </li>
 </ul><h1>lib/sles4sap/azure_cli.pm</h1>
@@ -509,6 +511,28 @@
 </dd>
 </dl>
 
+<h2 id="az_img_from_vhd_create">az_img_from_vhd_create</h2>
+
+<pre><code>az_img_from_vhd_create(resource_group =&gt; $rg, name =&gt; $name, source =&gt; $uploaded_vhd_url);</code></pre>
+
+<p>Create an image out of a .vhd disk in Azure storage.</p>
+
+<dl>
+
+<dt id="resource_group---existing-resource-group"><b>resource_group</b> - existing resource group</dt>
+<dd>
+
+</dd>
+<dt id="name---NAME-of-the-created-image"><b>name</b> - NAME of the created image</dt>
+<dd>
+
+</dd>
+<dt id="source---URI-of-the-vhd-disk-from-which-the-image-will-be-created"><b>source</b> - URI of the vhd disk from which the image will be created</dt>
+<dd>
+
+</dd>
+</dl>
+
 <h2 id="az_vm_create">az_vm_create</h2>
 
 <pre><code>az_vm_create(
@@ -636,7 +660,11 @@
 
 <p>[ &quot;PowerState/running&quot;, &quot;VM running&quot; ]</p>
 
-<p>or reach timeout. Polling frequency is dynamically calculated based on the timeout</p>
+<p>or reach timeout.</p>
+
+<p>Polling frequency is dynamically calculated based on the timeout.</p>
+
+<p>It returns the total ammount of time spent waiting or function kills the test on timeout.</p>
 
 <dl>
 
@@ -787,7 +815,7 @@
 
 <dl>
 
-<dt id="resource_group---existing-resource-group"><b>resource_group</b> - existing resource group</dt>
+<dt id="resource_group---existing-resource-group1"><b>resource_group</b> - existing resource group</dt>
 <dd>
 
 </dd>
@@ -816,7 +844,7 @@
 
 <dl>
 
-<dt id="resource_group---existing-resource-group1"><b>resource_group</b> - existing resource group</dt>
+<dt id="resource_group---existing-resource-group2"><b>resource_group</b> - existing resource group</dt>
 <dd>
 
 </dd>
@@ -843,7 +871,7 @@
 
 <dl>
 
-<dt id="resource_group---existing-resource-group2"><b>resource_group</b> - existing resource group</dt>
+<dt id="resource_group---existing-resource-group3"><b>resource_group</b> - existing resource group</dt>
 <dd>
 
 </dd>
@@ -1281,6 +1309,24 @@ returns uuid (true) on match, 0 (false) on mismatch.</code></pre>
 
 </dd>
 <dt id="save_to_file-Save-output-to-a-file-specified.-This-can-be-used-to-prevent-the-secret-being-shown-in-OpenQA-outputs.-Default:-undefined-false"><b>save_to_file</b> Save output to a file specified. This can be used to prevent the secret being shown in OpenQA outputs. Default: undefined/false</dt>
+<dd>
+
+</dd>
+</dl>
+
+<h2 id="az_group_exists">az_group_exists</h2>
+
+<pre><code>az_group_exists(resource_group=&gt;&#39;resource group name&#39; [, quiet=&gt;&#39;pssst!&#39;]);</code></pre>
+
+<p>Check if specified resource group exists. Returns <b>true</b> or <b>false</b>.</p>
+
+<dl>
+
+<dt id="resource_group-Resource-group-name"><b>resource_group</b> Resource group name</dt>
+<dd>
+
+</dd>
+<dt id="quiet-Turn-off-verbosity-if-defined"><b>quiet</b> Turn off verbosity if defined</dt>
 <dd>
 
 </dd>
