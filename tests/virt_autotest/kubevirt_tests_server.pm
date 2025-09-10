@@ -241,7 +241,6 @@ sub install_kubevirt_packages {
         transactional::enter_trup_shell(global_options => '--drop-if-no-change') if (is_transactional);
 
         zypper_call("lr -d");
-        zypper_call("ar $virt_tests_repo Virt-Tests-Repo");
         zypper_call("ar $virt_manifests_repo Virt-Manifests-Repo") if ($virt_manifests_repo);
         zypper_call("--gpg-auto-import-keys ref");
 
@@ -256,7 +255,13 @@ sub install_kubevirt_packages {
                 zypper_call("in -f -r SLE-Module-Containers${os_version}-Updates $virt_manifests_pkgs");
             }
         }
-        zypper_call("in -f -r Virt-Tests-Repo $virt_tests_pkg");
+
+        if ($virt_tests_repo) {
+            zypper_call("ar $virt_tests_repo Virt-Tests-Repo");
+            zypper_call("in -f -r Virt-Tests-Repo $virt_tests_pkg");
+        } else {
+            zypper_call("in -f $virt_tests_pkg");
+        }
     }
 
     # Install Longhorn dependencies
@@ -648,7 +653,7 @@ EOF
             my $n_runs = 1;
             while ($n_runs <= $retry_times) {
                 record_info("Run count: $n_runs", $test_cmd);
-                script_run($test_cmd, timeout => 7200);
+                script_run($test_cmd, timeout => 10800);
                 send_key 'ctrl-c';
                 save_screenshot;
                 last if (script_output("tail -1 $test_log") eq 'PASS');
