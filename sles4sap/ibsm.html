@@ -22,6 +22,11 @@
           <li><a href="#ibsm_calculate_address_range">ibsm_calculate_address_range</a></li>
         </ul>
       </li>
+      <li><a href="#ibsm_network_peering_azure_create">ibsm_network_peering_azure_create</a>
+        <ul>
+          <li><a href="#ibsm_network_peering_azure_delete">ibsm_network_peering_azure_delete</a></li>
+        </ul>
+      </li>
     </ul>
   </li>
 </ul><h1>lib/sles4sap/ibsm.pm</h1>
@@ -51,7 +56,65 @@ SPDX-License-Identifier: FSFAP</code></pre>
 
 <dl>
 
-<dt id="SLOT---integer-to-be-used-as-seed-in-calculating-addresses"><b>SLOT</b> - integer to be used as seed in calculating addresses</dt>
+<dt id="slot---integer-to-be-used-as-seed-in-calculating-addresses"><b>slot</b> - integer to be used as seed in calculating addresses</dt>
+<dd>
+
+</dd>
+</dl>
+
+<h2 id="ibsm_network_peering_azure_create">ibsm_network_peering_azure_create</h2>
+
+<pre><code>ibsm_network_peering_azure_create(
+    ibsm_rg =&gt; &#39;IBSmRg&#39;,
+    sut_rg =&gt; &#39;SUTRg&#39;,
+    name_prefix =&gt; &#39;something&#39;);</code></pre>
+
+<p>Create two peering in Azure. Given two resource group names, this function first calculate two peering names. The caller can provide a prefix but name also contain the vnet names from the two resource groups.</p>
+
+<dl>
+
+<dt id="ibsm_rg---Azure-resource-group-of-the-IBSm"><b>ibsm_rg</b> - Azure resource group of the IBSm</dt>
+<dd>
+
+</dd>
+<dt id="sut_rg---Azure-resource-group-of-the-SUT"><b>sut_rg</b> - Azure resource group of the SUT</dt>
+<dd>
+
+</dd>
+<dt id="name_prefix---prefix-to-be-applied-at-the-beginning-of-each-peering-name"><b>name_prefix</b> - prefix to be applied at the beginning of each peering name</dt>
+<dd>
+
+</dd>
+</dl>
+
+<h3 id="ibsm_network_peering_azure_delete">ibsm_network_peering_azure_delete</h3>
+
+<pre><code>ibsm_network_peering_azure_delete(
+    ibsm_rg =&gt; &#39;IBSmRg&#39;,
+    sut_rg =&gt; &#39;SUTRg&#39;,
+    name_prefix =&gt; &#39;something&#39;);</code></pre>
+
+<p>Delete the two network peerings between the two provided deployments. This function is symmetrical to ibsm_network_peering_azure_create.</p>
+
+<dl>
+
+<dt id="ibsm_rg---Azure-resource-group-of-the-IBSm1"><b>ibsm_rg</b> - Azure resource group of the IBSm</dt>
+<dd>
+
+</dd>
+<dt id="sut_rg---Azure-resource-group-of-the-SUT1"><b>sut_rg</b> - Azure resource group of the SUT</dt>
+<dd>
+
+</dd>
+<dt id="sut_vnet---substring-in-the-SUT-vnet.-Optional-and-only-needed-if-only-one-specific-VNET-has-to-be-considered.-Most-of-the-time-it-is-get_current_job_id"><b>sut_vnet</b> - substring in the SUT vnet. Optional and only needed if only one specific VNET has to be considered. Most of the time it is get_current_job_id()</dt>
+<dd>
+
+</dd>
+<dt id="timeout---default-is-5-mins"><b>timeout</b> - default is 5 mins</dt>
+<dd>
+
+</dd>
+<dt id="name_prefix---allow-the-user-to-prepend-name-prefix-to-the-peering-name-to-be-deleted"><b>name_prefix</b> - allow the user to prepend name prefix to the peering name to be deleted</dt>
 <dd>
 
 </dd>

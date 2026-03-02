@@ -29,6 +29,7 @@
       <li><a href="#config_guest_metadata">config_guest_metadata</a></li>
       <li><a href="#config_guest_vcpus">config_guest_vcpus</a></li>
       <li><a href="#config_guest_memory">config_guest_memory</a></li>
+      <li><a href="#config_guest_numa">config_guest_numa</a></li>
       <li><a href="#config_guest_virtualization">config_guest_virtualization</a></li>
       <li><a href="#config_guest_platform">config_guest_platform</a></li>
       <li><a href="#config_guest_os_variant">config_guest_os_variant</a></li>
@@ -53,10 +54,6 @@
       <li><a href="#config_guest_network_vnet_services">config_guest_network_vnet_services</a></li>
       <li><a href="#config_guest_network_vnet_policy">config_guest_network_vnet_policy</a></li>
       <li><a href="#config_guest_network_bridge">config_guest_network_bridge</a></li>
-      <li><a href="#write_guest_network_bridge_device_config">write_guest_network_bridge_device_config</a></li>
-      <li><a href="#write_guest_network_bridge_device_ifcfg">write_guest_network_bridge_device_ifcfg</a></li>
-      <li><a href="#write_guest_network_bridge_device_nmconnection">write_guest_network_bridge_device_nmconnection</a></li>
-      <li><a href="#activate_guest_network_bridge_device">activate_guest_network_bridge_device</a></li>
       <li><a href="#config_guest_network_bridge_device">config_guest_network_bridge_device</a></li>
       <li><a href="#config_guest_network_bridge_services">config_guest_network_bridge_services</a></li>
       <li><a href="#config_guest_network_bridge_policy">config_guest_network_bridge_policy</a></li>
@@ -98,6 +95,7 @@
       <li><a href="#has_autoconsole_for_sure">has_autoconsole_for_sure</a></li>
       <li><a href="#has_noautoconsole_for_sure">has_noautoconsole_for_sure</a></li>
       <li><a href="#record_guest_installation_result">record_guest_installation_result</a></li>
+      <li><a href="#is_guest_installation_done">is_guest_installation_done</a></li>
       <li><a href="#collect_guest_installation_logs_via_ssh">collect_guest_installation_logs_via_ssh</a></li>
       <li><a href="#upload_guest_installation_logs">upload_guest_installation_logs</a></li>
       <li><a href="#detach_all_nfs_mounts">detach_all_nfs_mounts</a></li>
@@ -203,6 +201,12 @@
 <pre><code>config_guest_memory($self[, guest_memory =&gt; &#39;memory&#39;])</code></pre>
 
 <p>Configure [guest_memory_options]. User can still change [guest_memory], [guest_memballoon], [guest_memdev], [guest_memtune] and [guest_memorybacking] by passing non-empty arguments using hash. If installation already passes, modify_guest_params will be called to modify [guest_memory], [guest_memballoon], [guest_memdev], [guest_memtune] and [guest_memorybacking] using already modified [guest_memory_options].</p>
+
+<h2 id="config_guest_numa">config_guest_numa</h2>
+
+<pre><code>config_guest_numa($self[, guest_numatune =&gt; &#39;numatune&#39;])</code></pre>
+
+<p>Configure [guest_numa_options]. User can still change [guest_numatune], by passing non-empty arguments using hash. If installation already passes, modify_guest_params will be called to modify [guest_numatune] using already modified [guest_numa_options].</p>
 
 <h2 id="config_guest_virtualization">config_guest_virtualization</h2>
 
@@ -329,19 +333,19 @@
 <pre><code>config_guest_network_vent($self[, _device =&gt; &#39;device&#39;, _ipaddr =&gt; &#39;ip&#39;, 
 _netmask =&gt; &#39;mask&#39;, _startaddr =&gt; &#39;start&#39;, _endaddr =&gt; &#39;end&#39;])</code></pre>
 
-<p>Create virtual network to be used with guest based on [guest_network_device] and passed in arguments, $_ipaddr, $_netmask, $_startaddr and $_endaddr. Skip creating already existing and active virtual network.</p>
+<p>Create virtual network to be used with guest based on [guest_network_device] and passed in arguments, $_ipaddr, $_netmask, $_startaddr and $_endaddr. Skip creating already existing and active virtual network. Call subroutine virt_autotest:: virtual_network_utils::config_virtual_network_device to do the actual work.</p>
 
 <h2 id="config_guest_network_vnet_services">config_guest_network_vnet_services</h2>
 
 <pre><code>config_guest_network_vent_services($self[, )</code></pre>
 
-<p>Make sure virtual network provides services as expected by adding ip address of [guest_network_device] as nameserver and [guest_domain_name] as search domain in /etc/resolv.conf.</p>
+<p>Make sure virtual network provides services as expected by adding ip address of [guest_network_device] as nameserver and [guest_domain_name] as search domain in /etc/resolv.conf. Call subroutine virt_autotest::virtual_network_utils:: config_domain_resolver to do the actual work.</p>
 
 <h2 id="config_guest_network_vnet_policy">config_guest_network_vnet_policy</h2>
 
 <pre><code>config_guest_network_vent_policy($self)</code></pre>
 
-<p>Loosen iptables rules for [guest_network_device]. Additionally, write commands executed into crontab to re-execute them automatically on reboot if host reboots somehow unexpectedly. IPv6 forwarding should not be enabled due to product bug bsc#1222229.</p>
+<p>Loosen iptables rules for [guest_network_device]. Additionally, write commands executed into crontab to re-execute them automatically on reboot if host reboots somehow unexpectedly. IPv6 forwarding should not be enabled due to product bug bsc#1222229. Calling virt_autotest::virtual_network_utils::config_network_device_policy to do the actual work.</p>
 
 <h2 id="config_guest_network_bridge">config_guest_network_bridge</h2>
 
@@ -349,48 +353,12 @@ _netmask =&gt; &#39;mask&#39;, _startaddr =&gt; &#39;start&#39;, _endaddr =&gt; 
 
 <p>Calls virt_autotest::utils::parse_subnet_address_ipv4 to parse detailed subnet information from [guest_netaddr].Create [guest_network_device] with parsed detailed subnet information by calling config_guest_network_bridge_device.Start DHCP and DNS services with parsed detailed subnet information by calling config_guest_network_bridge_services. If [guest_network_mode] is equal to &#39;host&#39;, guest chooses to use host network which is public facing. So there is no need to do subnet address parsing.</p>
 
-<h2 id="write_guest_network_bridge_device_config">write_guest_network_bridge_device_config</h2>
-
-<pre><code>write_guest_network_bridge_device_config($self, _name =&gt; $_name [, 
-_ipaddr =&gt; $_ipaddr, _bootproto =&gt; $_bootproto, _startmode =&gt; $_startmode, 
-_zone =&gt; $_zone, _bridge_type =&gt; $_bridge_type, _bridge_ports =&gt; $_bridge_ports, 
-_bridge_stp =&gt; $_bridge_stp, _bridge_forwarddelay =&gt; $_bridge_forwarddelay])</code></pre>
-
-<p>Write network device settings to conventional /etc/sysconfig/network/ifcfg-* or /etc/NetworkManager/system-connections/*.nmconnection depends on whether system network is managed by NetworkManager or not. The supported arguments are listed out as below: $_ipaddr: IP address/mask length pair of the interface $_name: Identifier of the interface $_bootproto: DHCP automatic or manual configuration, &#39;static&#39;, &#39;dhcp&#39; or &#39;none&#39; $_startmode: Auto start up or connection: &#39;auto&#39;, &#39;manual&#39; or &#39;off&#39; $_zone: The trust level of this network connection $_bridge_type: &#39;master&#39; or &#39;slave&#39; to indicate master or slave interface $_bridge_port: Specify interface&#39;s master or slave interface name $_bridge_stp: &#39;on&#39; or &#39;off&#39; to turn stp on or off $_bridge_forwarddelay: The stp forwarding delay in seconds If $_ipaddr given is empty, it means there is no associated specific ip address to this interface which might be attached to another bridge interface or will not be assigned one ip address from dhcp, so set $_ipaddr to &#39;0.0.0.0&#39;.If $_ipaddr given is non-empty but not in ip address format,for example, &#39;host&#39;,it means the interface will not use a ip address from pre-defined subnet and will automically accept dhcp ip address from public facing host network.</p>
-
-<h2 id="write_guest_network_bridge_device_ifcfg">write_guest_network_bridge_device_ifcfg</h2>
-
-<pre><code>write_guest_network_bridge_device_ifcfg($self, _name =&gt; $_name [, 
-_ipaddr =&gt; $_ipaddr, _name =&gt; $_name, _bootproto =&gt; $_bootproto, 
-_startmode =&gt; $_startmode, _zone =&gt; $_zone, _bridge_type =&gt; $_bridge_type, 
-_bridge_ports =&gt; $_bridge_ports, _bridge_stp =&gt; $_bridge_stp, 
-_bridge_forwarddelay =&gt; $_bridge_forwarddelay])</code></pre>
-
-<p>Write bridge device config file to /etc/sysconfig/network/ifcfg-*. Please refer to https://github.com/openSUSE/sysconfig/blob/master/config/ifcfg.template for config file content.</p>
-
-<h2 id="write_guest_network_bridge_device_nmconnection">write_guest_network_bridge_device_nmconnection</h2>
-
-<pre><code>write_guest_network_bridge_device_nmconnection($self, _name =&gt; $_name [, 
-_ipaddr =&gt; $_ipaddr, _name =&gt; $_name, _bootproto =&gt; $_bootproto, 
-_startmode =&gt; $_startmode, _zone =&gt; $_zone, _bridge_type =&gt; $_bridge_type, 
-_bridge_ports =&gt; $_bridge_ports, _bridge_stp =&gt; $_bridge_stp, 
-_bridge_forwarddelay =&gt; $_bridge_forwarddelay])</code></pre>
-
-<p>Write bridge device config file to /etc/NetworkManager/system-connections/*. NM settings are a little bit different from ifcfg settings, but there are definite mapping between them. So translation from well-known and default ifcfg settings to NM settings is necessary. Please refer to nm-settings explanation as below: https://developer-old.gnome.org/NetworkManager/stable/nm-settings-keyfile.html</p>
-
-<h2 id="activate_guest_network_bridge_device">activate_guest_network_bridge_device</h2>
-
-<pre><code>activate_guest_network_bridge_device($self, _host_device =&gt; $_host_device,
-_bridge_device =&gt; $_bridge_device)</code></pre>
-
-<p>Activate guest network bridge device by using wicked or NetworkManager depends on system configuration. And also validate whether activation is successful or not.</p>
-
 <h2 id="config_guest_network_bridge_device">config_guest_network_bridge_device</h2>
 
 <pre><code>config_guest_network_bridge_device($self, $_bridge_network,
 $_bridge_network_in_route, $_bridge_device)</code></pre>
 
-<p>Create [guest_network_device] by writing device information into ifcfg file in /etc/sysconfig/network. Mark guest installation as FAILED if [guest_network_device] can not be successfully started up. If [guest_network_device] or [guest_netaddr] already exists and active on host judging by &#39;ip route show&#39;, both of them will not be created anyway.</p>
+<p>Create [guest_network_device] by writing device information into ifcfg file in /etc/sysconfig/network. Mark guest installation as FAILED if [guest_network_device] can not be successfully started up. If [guest_network_device] or [guest_netaddr] already exists and active on host judging by &#39;ip route show&#39;, both of them will not be created anyway. Call subroutine virt_autotest::virtual_network_utils:: write_network_bridge_device_config and virt_autotest::virtual_network_utils:: activate_network_bridge_device to do the actual work.</p>
 
 <h2 id="config_guest_network_bridge_services">config_guest_network_bridge_services</h2>
 
@@ -398,13 +366,13 @@ $_bridge_network_in_route, $_bridge_device)</code></pre>
 $_guest_network_ipaddr_gw, $_guest_network_mask, $_guest_network_ipaddr_start,
 $_guest_network_ipaddr_end, $_guest_network_ipaddr_rev)</code></pre>
 
-<p>Start DHCP and DNS services by using dnsmasq command line. Add parsed subnet gateway ip address and [guest_domain_name] into /etc/resolv.conf. Empty NETCONFIG_DNS_POLICY in /etc/sysconfig/network/config. Mark guest installation as FAILED if dnsmasq command line can not be successfully fired up. Additionally, write dnsmasq command line used into crontab to start DHCP and DNS services automatically on reboot if host reboots somehow unexpectedly.</p>
+<p>Start DHCP and DNS services by using dnsmasq command line. Call subroutine virt_autotest::virtual_network_utils::config_domain_resolver to add parsed subnet gateway ip address and [guest_domain_name] into /etc/resolv.conf and empty NETCONFIG_DNS_POLICY in /etc/sysconfig/network/config. Mark guest installation as FAILED if dnsmasq command line can not be successfully fired up. Additionally, write dnsmasq command line used into crontab to start DHCP and DNS services automatically on reboot if host reboots somehow unexpectedly.</p>
 
 <h2 id="config_guest_network_bridge_policy">config_guest_network_bridge_policy</h2>
 
 <pre><code>config_guest_network_bridge_policy($self, $_guest_network_device)</code></pre>
 
-<p>Stop firewall/apparmor, loosen iptables rules and enable forwarding globally and on all default route devices and [guest_network_device]. Additionally, write commands executed into crontab to re-execute them automatically on reboot if host reboots somehow unexpectedly. IPv6 forwarding should not be enabled due to product bug bsc#1222229.</p>
+<p>Stop firewall/apparmor, loosen iptables rules and enable forwarding globally and on all default route devices and [guest_network_device]. Additionally, write commands executed into crontab to re-execute them automatically on reboot if host reboots somehow unexpectedly. IPv6 forwarding should not be enabled due to product bug bsc#1222229. Calling virt_autotest::virtual_network_utils::config_network_device_policy to do the actual work.</p>
 
 <h2 id="schedule_tasks_on_boot">schedule_tasks_on_boot</h2>
 
@@ -428,7 +396,7 @@ $_guest_network_ipaddr_end, $_guest_network_ipaddr_rev)</code></pre>
 
 <pre><code>config_guest_installation_method($self[, key-value pairs of guest installation arguments])</code></pre>
 
-<p>Configure [guest_installation_method_options]. User can still change [guest_installation_method], [guest_installation_media], [guest_build], [guest_version], [guest_version_major], [guest_version_minor], [guest_installation_fine_grained] and [guest_autoconsole] by passing non-empty arguments using hash.Call config_guest_installation_media to set correct installation media. For directkernel installation method which uses virt-install --install, please also refer to following link for more information https://manpages.opensuse.org/Tumbleweed/virt-install/virt-install.1.en.html</p>
+<p>Configure [guest_installation_method_options]. User can still change [guest_installation_method], [guest_installation_media], [guest_build], [guest_version], [guest_version_major], [guest_version_minor], [guest_installation_fine_grained] and [guest_autoconsole] by passing non-empty arguments using hash.Call config_guest_installation_media to set correct installation media. For directkernel installation method which uses virt-install --install, please also refer to following link for more information https://manpages.opensuse.org/Tumbleweed/virt-install/virt-install.1.en.html For &#39;location&#39; installation method, virt-install command looks like: --location [guest_installation_media],[guest_installation_method_others] --extra-args root=live:[guest_installation_fine_grained_media] --extra-args inst.install_url=[guest_installation_fine_grained_repos] --extra-args [guest_installation_extra_args] For &#39;directkernel&#39; installation method, virt-install command looks like: --install kernel=[guest_installation_fine_grained_media]/linux, initrd=[guest_installation_fine_grained_media]/initrd, kernel_args=root=live:[guest_installation_media],inst.install_url= [guest_installation_fine_grained_repos],[guest_installation_fine_grained_kernel_args] For &#39;import&#39; installation method, virt-install command looks like: virt-install --import --disk [guest_storage_options]</p>
 
 <h2 id="config_guest_installation_media">config_guest_installation_media</h2>
 
@@ -488,7 +456,7 @@ $_guest_network_ipaddr_end, $_guest_network_ipaddr_rev)</code></pre>
 
 <pre><code>config_guest_unattended_installation($self)</code></pre>
 
-<p>Configure [guest_installation_automation_options]. Fill in unattended installation file with [guest_installation_media], [guest_secure_boot], [guest_boot_settings], [guest_storage_label], [guest_domain_name], [guest_name] and host public rsa key. User can also change [guest_do_registration], [guest_registration_server], [guest_registration_username], [guest_registration_password], [guest_registration_code], [guest_registration_extensions] and [guest_registration_extensions_codes] which are used in configuring guest installation automation registration. Subroutine config_guest_installation_automation_registration is called to perform this task. Start HTTP server using python3 modules in unattended automation file folder to serve unattended guest installation.Mark guest installation as FAILED if HTTP server can not be started up or unattended installation file is not accessible. Common varaibles are used in guest unattended installation file and to be replaced with actual values.They are common variables that are relevant to guest itself or its attributes, so they can be used in any unattended installation files regardless of autoyast or kickstart or others.For example, if you want to set guest ethernet interface mac address somewhere in your customized unattended installation file, put ##Device-MacAddr## there then it will be replaced with the real mac address. The actual kind of automation used matters less here than variables used in the unattended installation file, so keep using standardized common varialbes in unattened installation file will make it come alive automatically regardless of the actual kind of automation being used. Currently the following common variables are supported:[Module-Basesystem, Module-Desktop-Applications, Module-Development-Tools, Module-Legacy, Module-Server-Applications, Module-Web-Scripting, Product-SLES, Authorized-Keys, Secure-Boot, Boot-Loader-Type, Disk-Label, Domain-Name, Host-Name, Device-MacAddr, Logging-HostName, Logging-HostPort, Do-Registration, Registration-Server, Registration-UserName, Registration-Password and Registration-Code].</p>
+<p>Configure [guest_installation_automation_options]. Fill in unattended installation file with [guest_installation_media], [guest_secure_boot], [guest_boot_settings], [guest_storage_label], [guest_domain_name], [guest_name] and host public ssh key. User can also change [guest_do_registration], [guest_registration_server], [guest_registration_username], [guest_registration_password], [guest_registration_code], [guest_registration_extensions] and [guest_registration_extensions_codes] which are used in configuring guest installation automation registration. Subroutine config_guest_installation_automation_registration is called to perform this task. Start HTTP server using python3 modules in unattended automation file folder to serve unattended guest installation.Mark guest installation as FAILED if HTTP server can not be started up or unattended installation file is not accessible. Common varaibles are used in guest unattended installation file and to be replaced with actual values.They are common variables that are relevant to guest itself or its attributes, so they can be used in any unattended installation files regardless of autoyast or kickstart or others.For example, if you want to set guest ethernet interface mac address somewhere in your customized unattended installation file, put ##Device-MacAddr## there then it will be replaced with the real mac address. The actual kind of automation used matters less here than variables used in the unattended installation file, so keep using standardized common varialbes in unattened installation file will make it come alive automatically regardless of the actual kind of automation being used. Currently the following common variables are supported:[Module-Basesystem, Module-Desktop-Applications, Module-Development-Tools, Module-Legacy, Module-Server-Applications, Module-Web-Scripting, Product-SLES, Authorized-Keys, Secure-Boot, Boot-Loader-Type, Disk-Label, Domain-Name, Host-Name, Device-MacAddr, Logging-HostName, Logging-HostPort, Do-Registration, Registration-Server, Registration-UserName, Registration-Password and Registration-Code].</p>
 
 <h2 id="validate_guest_installation_automation_file">validate_guest_installation_automation_file</h2>
 
@@ -633,6 +601,12 @@ $_guest_network_ipaddr_end, $_guest_network_ipaddr_rev)</code></pre>
 <pre><code>record_guest_installation_result($self, $_guest_installation_result)</code></pre>
 
 <p>Record final guest installation result in [guest_installation_result] and set [stop_run] and [stop_timestamp].</p>
+
+<h2 id="is_guest_installation_done">is_guest_installation_done</h2>
+
+<pre><code>is_guest_installation_done($self)</code></pre>
+
+<p>Check whether guest installation finishes completely and has final successful or failing result. Take agama guest as an example, AGAMA_INSTALL_PHASE_DONE does not and should not indicates a complete successful or failing installation . It only passes the initial configuration and installation by employing agama. Final result can only be determined after rebooting and detecting system.</p>
 
 <h2 id="collect_guest_installation_logs_via_ssh">collect_guest_installation_logs_via_ssh</h2>
 
