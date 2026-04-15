@@ -51,6 +51,9 @@ sub run_tests {
 
     if (is_svirt) {
         $ssh_vm = "";
+        # Disconnect CD-ROM
+        my $vim_cmd = "vim-cmd vmsvc/device.connection $vm_id 3002 false";
+        console('svirt')->run_cmd($vim_cmd, domain => 'sshVMwareServer', wantarray => 1);
     }
     elsif (is_qemu) {
         $ssh_vm = "ssh root\@$vm_name ";
