@@ -134,4 +134,16 @@ sub get_host_timestamp {
     return $host_time;
 }
 
+sub esxi_vm_disconnect_cdrom {
+    my $vmid = shift;
+    my $vim_cmd = "vim-cmd vmsvc/device.connection $vmid 3000 0";
+
+    if (is_svirt) {
+        return console('svirt')->run_cmd($vim_cmd, domain => 'sshVMwareServer', wantarray => 1);
+    }
+    elsif (is_qemu) {
+        return script_run(qq(ssh -o StrictHostKeyChecking=no root\@$hypervisor "$vim_cmd"));
+    }
+}
+
 1;

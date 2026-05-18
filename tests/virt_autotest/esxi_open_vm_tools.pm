@@ -61,6 +61,9 @@ sub run_tests {
     do_power_mgmt_tests($vm_id, $vm_ip);
     do_networking_tests($vm_id, $vm_ip);
     do_clock_sync_tests($vm_name, $vm_id, $vm_ip);
+
+    record_info('Clean up guest', $vm_name);
+    cleanup_vm();
 }
 
 sub do_sanity_checks {
@@ -341,6 +344,11 @@ sub get_diff_seconds {
     return $diff_secs;
 }
 
+sub cleanup_vm {
+    my $vm_name = shift;
+    console('svirt')->stop_vm if (is_svirt);
+}
+
 sub post_fail_hook {
     select_console 'log-console';
 
@@ -370,6 +378,9 @@ sub post_fail_hook {
         upload_logs $vm_logs_tarball;
         assert_script_run($ssh_vm . "rm ~/$vm_logs_tarball") if (is_qemu);
     }
+
+    # Clean up guest
+    cleanup_vm();
 }
 
 sub post_run_hook () {
