@@ -123,8 +123,9 @@ __END
     $self->check_service_status();
     assert_script_run("grep static /var/lib/kubelet/cpu_manager_state");
 
-    my $kubevirt_ver = script_output(qq(ssh root\@$server_ip "rpm -q --qf \%{VERSION} kubevirt-tests"));
     # Install Longhorn dependencies
+    my $kubevirt_ver = $self->get_var_from_parent('KUBEVIRT_VERSION');
+    record_info('Kubevirt test version', $kubevirt_ver);
     if (is_transactional) {
         if (script_run('rpmquery jq open-iscsi') && ($kubevirt_ver ge "0.50.0")) {
             transactional::trup_install("jq open-iscsi");

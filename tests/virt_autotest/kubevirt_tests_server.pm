@@ -192,15 +192,41 @@ sub check_service_status {
     assert_script_run("! journalctl -u rke2-server | grep \'\"level\":\"error\"\'");
 }
 
+sub detect_kubevirt_pkg {
+    # Look up the actual kubevirt-${component} package name available in the given repo
+    # (or any enabled repo when $repo_alias is undef). Supports both the legacy form
+    # 'kubevirt-${component}' and the version-stream form 'kubevirt-X.Y-${component}'
+    # (e.g. kubevirt-1.6-manifests). When both forms are found, the version-stream one wins.
+    my ($self, $component, $repo_alias) = @_;
+    my $repo_arg = $repo_alias ? "-r $repo_alias" : '';
+    my $pattern = "^kubevirt(-[0-9]+(\\.[0-9]+)*)?-${component}\$";
+    my $awk_script = qq({ gsub(/^[ \\t]+|[ \\t]+\$/, "", \$2); if (\$2 ~ /$pattern/) print \$2 });
+    my $output = script_output(
+        qq(zypper -n se -t package $repo_arg kubevirt 2>/dev/null | ) .
+          qq(awk -F'|' '$awk_script' | sort -u),
+        proceed_on_failure => 1
+    );
+    my @pkgs = grep { /\S/ } split /\n/, $output;
+    return '' unless @pkgs;
+    my @versioned = grep { /^kubevirt-\d/ } @pkgs;
+    return $versioned[0] if @versioned;
+    return $pkgs[0];
+}
+
 sub install_kubevirt_packages {
     my $self = shift;
     # Install required kubevirt packages
     my $os_version = get_var('VERSION');
+    my $incident_id = get_var('INCIDENT_ID');
     my $virt_manifests_repo;
     my $virt_tests_repo;
-    my $virt_manifests_pkgs = 'containerized-data-importer-manifests kubevirt-manifests kubevirt-virtctl';
-    my $virt_tests_pkg = 'kubevirt-tests';
-    my $search_manifests;
+    my $containerized_manifests_pkg = 'containerized-data-importer-manifests';
+    my $kubevirt_manifests_pkg;
+    my $kubevirt_virtctl_pkg;
+    my $kubevirt_tests_pkg;
+    our $kubevirt_major_ver;
+    our $kubevirt_manifest_path;
+    our $kubevirt_ver;
 
     record_info('Install kubevirt packages', '');
     # Development Tools repo for OBS Module, e.g. http://download.suse.de/download/ibs/SUSE/Products/SLE-Module-Development-Tools-OBS/15-SP4/x86_64/product/
@@ -208,56 +234,72 @@ sub install_kubevirt_packages {
     # Devel test repo, e.g. http://download.suse.de/download/ibs/Devel:/Virt:/SLE-15-SP4/SUSE_SLE-15-SP4_Update_standard/
     # MU product test (SLE official MU channel+incidents)
     if (get_var('INCIDENT_REPO')) {
-        zypper_call("in -f $virt_manifests_pkgs $virt_tests_pkg");
+        my $repo_mirror_host = get_required_var('REPO_MIRROR_HOST');
+        my $manifests_repo_alias = "Maintenance_${incident_id}_Containers";
+        my $tests_repo_alias = "Maintenance_${incident_id}_Development-Tools-OBS";
 
-        # Check if at least one installed kubevirt package is from the incident repo
-        my $pkgs_from_incident_repo;
-        foreach (split(' ', $virt_manifests_pkgs), $virt_tests_pkg) {
-            $pkgs_from_incident_repo += 1 if (script_output("zypper info $_ | awk -F': ' '/^Repository/{print \$2}'") =~ /^TEST_/);
-        }
-        # Patch the kubevirt-operator manifest to use images from the SUSE internal registry
-        my $incident_id = get_required_var('INCIDENT_ID');
-        my $manifest = "/usr/share/kube-virt/manifests/release/kubevirt-operator.yaml";
-        my $src_repo = "registry.suse.com";
-        my $dst_repo = "registry.suse.de/suse/maintenance/$incident_id/containerfile";
+        $virt_manifests_repo = "http://$repo_mirror_host/ibs/SUSE:/Maintenance:/$incident_id/SUSE_Updates_SLE-Module-Containers_${os_version}_x86_64/";
+        $virt_tests_repo = "http://$repo_mirror_host/ibs/SUSE:/Maintenance:/$incident_id/SUSE_Updates_SLE-Module-Development-Tools-OBS_${os_version}_x86_64/";
 
-        assert_script_run("sed -i 's|$src_repo|$dst_repo|g' $manifest");
-        record_info("Patch kubevirt-operator to suse.de");
+        zypper_call("ar $virt_manifests_repo $manifests_repo_alias") if ($virt_manifests_repo);
+        zypper_call("ar $virt_tests_repo $tests_repo_alias") if ($virt_tests_repo);
+        zypper_call("lr -d");
+        zypper_call("--gpg-auto-import-keys ref");
 
-        if ($pkgs_from_incident_repo < 1) {
-            die "No kubevirt packages were installed from incident repository.";
-        } else {
-            record_info("$pkgs_from_incident_repo package(s) installed from incident repository.", script_output("zypper lr -u; zypper se -s $virt_manifests_pkgs $virt_tests_pkg"));
-        }
+        $kubevirt_manifests_pkg = $self->detect_kubevirt_pkg('manifests', $manifests_repo_alias);
+        $kubevirt_virtctl_pkg = $self->detect_kubevirt_pkg('virtctl', $manifests_repo_alias);
+        $kubevirt_tests_pkg = $self->detect_kubevirt_pkg('tests', $tests_repo_alias);
+
+        zypper_call("in -f $containerized_manifests_pkg");
+        zypper_call("in -f -r $manifests_repo_alias $kubevirt_manifests_pkg $kubevirt_virtctl_pkg");
+        zypper_call("in -f -r $tests_repo_alias $kubevirt_tests_pkg");
     } else {
         $virt_manifests_repo = get_var('VIRT_MANIFESTS_REPO');
         $virt_tests_repo = get_var('VIRT_TESTS_REPO');
 
         transactional::enter_trup_shell(global_options => '--drop-if-no-change') if (is_transactional);
 
-        zypper_call("lr -d");
         zypper_call("ar $virt_manifests_repo Virt-Manifests-Repo") if ($virt_manifests_repo);
         zypper_call("ar $virt_tests_repo Virt-Tests-Repo") if ($virt_tests_repo);
+        zypper_call("lr -d");
         zypper_call("--gpg-auto-import-keys ref");
 
+        $kubevirt_manifests_pkg = $self->detect_kubevirt_pkg('manifests', 'Virt-Manifests-Repo');
+        $kubevirt_virtctl_pkg = $self->detect_kubevirt_pkg('virtctl', 'Virt-Manifests-Repo');
+        $kubevirt_tests_pkg = $self->detect_kubevirt_pkg('tests', 'Virt-Tests-Repo');
+
         if ($virt_manifests_repo) {
-            zypper_call("in -f -r Virt-Manifests-Repo $virt_manifests_pkgs");
+            zypper_call("in -f -r Virt-Manifests-Repo $containerized_manifests_pkg $kubevirt_manifests_pkg $kubevirt_virtctl_pkg");
         } else {
-            zypper_call("in -f $virt_manifests_pkgs");
+            zypper_call("in -f $kubevirt_manifests_pkg $kubevirt_virtctl_pkg");
         }
 
         if ($virt_tests_repo) {
-            zypper_call("in -f -r Virt-Tests-Repo $virt_tests_pkg");
+            zypper_call("in -f -r Virt-Tests-Repo $kubevirt_tests_pkg");
         } else {
-            zypper_call("in -f $virt_tests_pkg");
+            zypper_call("in -f $kubevirt_tests_pkg");
         }
-
-        record_info('Installed kubevirt package version', script_output("zypper lr -u; zypper se -s $virt_manifests_pkgs $virt_tests_pkg"));
     }
+    record_info('Installed kubevirt package version', script_output("zypper lr -u; zypper se -s $containerized_manifests_pkg $kubevirt_manifests_pkg $kubevirt_virtctl_pkg $kubevirt_tests_pkg"));
+
+    $kubevirt_major_ver = ($kubevirt_manifests_pkg =~ /^kubevirt-([\d.]+)-manifests$/) ? $1 : '';
+    record_info('Kubevirt major version', $kubevirt_major_ver);
+    $kubevirt_manifest_path = ($kubevirt_major_ver =~ /^\d+(\.\d+)*$/) ? "/usr/share/kube-virt-${kubevirt_major_ver}/manifests" : "/usr/share/kube-virt/manifests";
+    record_info('Kubevirt manifest path', $kubevirt_manifest_path);
+    if (get_var('INCIDENT_REPO')) {
+        # Patch the kubevirt-operator manifest to use images from the SUSE internal registry
+        my $src_repo = "registry.suse.com";
+        my $dst_repo = "registry.suse.de/suse/maintenance/$incident_id/containerfile";
+
+        assert_script_run("sed -i 's|$src_repo|$dst_repo|g' $kubevirt_manifest_path/release/kubevirt-operator.yaml");
+        record_info("Patch kubevirt-operator to suse.de");
+    }
+    $kubevirt_ver = script_output("rpm -q --qf %{VERSION} $kubevirt_manifests_pkg");
+    record_info('Kubevirt test version', $kubevirt_ver);
+    set_var('KUBEVIRT_VERSION', $kubevirt_ver);
+    bmwqemu::save_vars();
 
     # Install Longhorn dependencies
-    our $kubevirt_ver = script_output("rpm -q --qf \%{VERSION} kubevirt-manifests");
-    record_info('Kubevirt test version', $kubevirt_ver);
     zypper_call('in jq open-iscsi') if (script_run('rpmquery jq open-iscsi') && ($kubevirt_ver ge "0.50.0"));
 
     # Install required packages perl-CPAN-Changes and ant-junit
@@ -294,6 +336,8 @@ sub install_kubevirt_packages {
 
 sub deploy_kubevirt_manifests {
     my $self = shift;
+    our $kubevirt_major_ver;
+    our $kubevirt_manifest_path;
     our $kubevirt_ver;
 
     # Workaround for failure 'MountVolume.SetUp failed for volume "local-storage" : mkdir /mnt/local-storage: read-only file system'
@@ -303,6 +347,7 @@ sub deploy_kubevirt_manifests {
     my $image1 = "quay.io/kubevirt/alpine-ext-kernel-boot-demo:v$kubevirt_ver";
     my $tag1 = "registry:5000/kubevirt/alpine-ext-kernel-boot-demo:devel";
     assert_script_run("curl -JLO https://gitlab.suse.de/virtualization/kubevirt-ci/-/raw/c41969bca710335f7966b1588abca9958a33ff24/pre-pull.sh");
+    assert_script_run("sed -i 's|kube-virt|kube-virt-${kubevirt_major_ver}|g' pre-pull.sh") if ($kubevirt_major_ver);
 
     my $pre_pull = script_output('sh pre-pull.sh');
     assert_script_run("curl -JLO https://gitlab.suse.de/virtualization/kubevirt-ci/-/raw/c41969bca710335f7966b1588abca9958a33ff24/node-helper.yaml.in");
@@ -319,13 +364,13 @@ sub deploy_kubevirt_manifests {
     assert_script_run("kubectl apply -f /usr/share/cdi/manifests/release/cdi-cr.yaml");
     assert_script_run("kubectl -n cdi wait cdis cdi --for condition=available --timeout=30m", timeout => 1800);
 
-    assert_script_run("kubectl apply -f /usr/share/kube-virt/manifests/release/kubevirt-operator.yaml");
-    assert_script_run("kubectl apply -f /usr/share/kube-virt/manifests/release/kubevirt-cr.yaml");
+    assert_script_run("kubectl apply -f $kubevirt_manifest_path/release/kubevirt-operator.yaml");
+    assert_script_run("kubectl apply -f $kubevirt_manifest_path/release/kubevirt-cr.yaml");
     assert_script_run("kubectl -n kubevirt wait kv kubevirt --for condition=available --timeout=30m", timeout => 1800);
 
-    assert_script_run("kubectl apply -f /usr/share/kube-virt/manifests/testing/rbac-for-testing.yaml");
-    assert_script_run("kubectl apply -f /usr/share/kube-virt/manifests/testing/disks-images-provider.yaml");
-    assert_script_run("kubectl apply -f /usr/share/kube-virt/manifests/testing/uploadproxy-nodeport.yaml");
+    assert_script_run("kubectl apply -f $kubevirt_manifest_path/testing/rbac-for-testing.yaml");
+    assert_script_run("kubectl apply -f $kubevirt_manifest_path/testing/disks-images-provider.yaml");
+    assert_script_run("kubectl apply -f $kubevirt_manifest_path/testing/uploadproxy-nodeport.yaml");
 
     if ($kubevirt_ver lt "0.50.0") {
         my $hostname = script_output('hostname');
@@ -353,11 +398,10 @@ sub deploy_kubevirt_manifests {
 
 sub setup_longhorn_csi {
     my $self = shift;
-
-    record_info('Install Longhorn CSI', '');
+    my $longhorn_ver = get_var('LONGHORN_VERSION');
 
     # Install Longhorn CSI
-    my $longhorn_ver = get_var('LONGHORN_VERSION');
+    record_info('Install Longhorn CSI', $longhorn_ver);
     assert_script_run("kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v$longhorn_ver/deploy/longhorn.yaml");
 
     # Ensure successful Longhorn deployment
@@ -403,7 +447,7 @@ sub setup_longhorn_csi {
     assert_script_run("kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v$longhorn_ver/deploy/backupstores/nfs-backupstore.yaml");
 
     # Set backup target URL to nfs://longhorn-test-nfs-svc.default:/opt/backupstore
-    assert_script_run(qq(kubectl patch -n longhorn-system lhs backup-target --type merge -p '{"value": "nfs://longhorn-test-nfs-svc.default:/opt/backupstore"}'));
+    assert_script_run(qq(kubectl patch -n longhorn-system lhs backup-target --type merge -p '{"value": "nfs://longhorn-test-nfs-svc.default:/opt/backupstore"}')) if ($longhorn_ver lt "1.8.0");
 
     # Add a default VolumeSnapshotClass
     assert_script_run("kubectl apply -f - <<EOF
@@ -642,7 +686,7 @@ EOF
             my $n_runs = 1;
             while ($n_runs <= $retry_times) {
                 record_info("Run count: $n_runs", $test_cmd);
-                script_run($test_cmd, timeout => 7200);
+                script_run($test_cmd, timeout => 14400);
                 send_key 'ctrl-c';
                 save_screenshot;
                 last if (script_output("tail -1 $test_log") eq 'PASS');
