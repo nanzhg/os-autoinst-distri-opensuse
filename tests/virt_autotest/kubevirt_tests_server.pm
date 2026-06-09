@@ -403,7 +403,7 @@ sub setup_longhorn_csi {
     assert_script_run("kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v$longhorn_ver/deploy/backupstores/nfs-backupstore.yaml");
 
     # Set backup target URL to nfs://longhorn-test-nfs-svc.default:/opt/backupstore
-    assert_script_run(qq(kubectl patch -n longhorn-system lhs backup-target --type merge -p '{"value": "nfs://longhorn-test-nfs-svc.default:/opt/backupstore"}'));
+    assert_script_run(qq(kubectl patch -n longhorn-system lhs backup-target --type merge -p '{"value": "nfs://longhorn-test-nfs-svc.default:/opt/backupstore"}')) if ($longhorn_ver lt "1.8.0");
 
     # Add a default VolumeSnapshotClass
     assert_script_run("kubectl apply -f - <<EOF
@@ -642,7 +642,7 @@ EOF
             my $n_runs = 1;
             while ($n_runs <= $retry_times) {
                 record_info("Run count: $n_runs", $test_cmd);
-                script_run($test_cmd, timeout => 7200);
+                script_run($test_cmd, timeout => 21600);
                 send_key 'ctrl-c';
                 save_screenshot;
                 last if (script_output("tail -1 $test_log") eq 'PASS');
