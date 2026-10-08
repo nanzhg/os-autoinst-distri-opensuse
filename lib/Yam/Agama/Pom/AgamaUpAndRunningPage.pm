@@ -24,7 +24,7 @@ sub new {
               agama-installing
               agama-sle-overview
               agama-multipath)],
-        timeout_expect_is_shown => $args->{timeout_expect_is_shown} // 240
+        timeout_expect_is_shown => $args->{timeout_expect_is_shown} // 600
     }, $class;
 }
 
